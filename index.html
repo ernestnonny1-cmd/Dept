@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Store Debt Tracker</title>
+<style>
+:root{--bg:#f2f4f8;--card:#fff;--text:#1b2433;--muted:#6b7686;--line:#e3e7ee;--primary:#4f46e5;--soft:#eceafd;--green:#16a34a;--red:#dc2626;--redsoft:#fdecec}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--card:#1a212d;--text:#eef1f6;--muted:#98a2b3;--line:#2a3342;--primary:#8b85ff;--soft:#262456;--red:#ff7b7b;--redsoft:#3a1f23}}
+*{box-sizing:border-box}
+body{margin:0;padding:16px;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text)}
+#app{max-width:440px;margin:auto}
+h3{margin:0 0 14px;font-size:22px}
+small{display:block;color:var(--muted);font-size:12px}
+.store{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border-radius:20px;padding:20px;margin-bottom:16px;box-shadow:0 10px 24px rgba(79,70,229,.3)}
+.store label{font-size:12px;letter-spacing:1px;opacity:.8}
+.store input{width:100%;background:transparent;border:none;outline:none;color:#fff;font-size:24px;font-weight:700;padding:4px 0 12px;border-bottom:1px solid rgba(255,255,255,.3)}
+.td{margin-top:14px;font-size:14px;opacity:.95}.td b{display:block;font-size:28px;margin-top:2px}.td small{color:#fff;opacity:.8}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.mb{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 10px;text-align:center;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.mb span{display:block;font-size:30px;margin-bottom:8px}.mb:active{transform:scale(.97)}
+.back{background:var(--soft);color:var(--primary);border:none;border-radius:999px;padding:10px 16px;font-size:15px;font-weight:600;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px}
+.fl{font-size:13px;font-weight:600;color:var(--muted);display:block;margin:0 0 6px}
+.card .f+.fl{margin-top:14px}
+.f{width:100%;padding:13px;font-size:16px;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:12px;outline:none;font-family:inherit}
+.f:focus{border-color:var(--primary)}
+.ih,.ir{display:grid;grid-template-columns:56px 1fr 96px;gap:8px}
+.ih{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;padding:0 4px}.ir{margin-bottom:8px}.ir .f{padding:12px 8px;text-align:center}
+.pm,.two{display:flex;gap:8px}.pm{margin-top:6px}
+.sm{flex:1;padding:12px;border:none;border-radius:12px;background:var(--soft);color:var(--primary);font-size:15px;font-weight:600}
+.sm.red{background:var(--redsoft);color:var(--red);flex:0 0 auto}
+.sm.wa{background:#dcf8e6;color:#128c4a}
+.tb{display:flex;justify-content:space-between;align-items:center;background:var(--redsoft);color:var(--red);border-radius:14px;padding:14px 16px;font-weight:700;font-size:18px;margin-bottom:14px}
+.ok{width:100%;padding:16px;background:var(--green);color:#fff;border:none;border-radius:14px;font-size:18px;font-weight:700;margin-bottom:14px;box-shadow:0 6px 16px rgba(22,163,74,.3)}
+.ok.blue{background:var(--primary);box-shadow:none}
+.li,.le{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.li:last-child,.le:last-child{border-bottom:0}
+.li .n{color:var(--muted);width:20px;font-size:14px}.li .nm{flex:1;font-weight:600;cursor:pointer}.li .am{font-weight:700;color:var(--red)}
+.le>div{flex:1}.pl{color:var(--red);font-weight:700}.mn{color:var(--green);font-weight:700}
+.ck{width:40px;height:40px;border-radius:50%;border:2px solid var(--green);background:none;color:var(--green);font-size:18px;font-weight:700}
+.ib{background:none;border:none;font-size:18px;color:var(--muted);padding:4px}
+.empty{text-align:center;color:var(--muted);padding:16px}.over{color:var(--red);font-weight:600}
+.tools{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9}
+.box{background:var(--card);color:var(--text);border-radius:18px;padding:18px;width:100%;max-width:400px}
+.sum{display:flex;gap:10px;margin-bottom:14px}.sum div{flex:1;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;font-weight:700}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ===== 1. DATA (stored on this phone) ===== */
+var KEY = "storeDebtApp", DKEY = "storeDebtDraft", UKEY = "storeDebtUndo";
+function load(k, fb) { try { var v = JSON.parse(localStorage.getItem(k)); return v || fb; } catch (e) { return fb; } }
+function put(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+var S = load(KEY, { store: "My Small Store", debtors: [], plans: { goals: "", items: [] } });
+function fix() { S.products = S.products || []; S.plans = S.plans || { goals: "", items: [] }; }
+fix();
+var draft = load(DKEY, null);
+var undoS = null; try { undoS = localStorage.getItem(UKEY); } catch (e) {}
+var sortBy = "big";
+function save() { put(KEY, S); }
+// snap() remembers the data before a change, so "Undo" can bring it back
+function snap() { undoS = JSON.stringify(S); try { localStorage.setItem(UKEY, undoS); } catch (e) {} }
+function undo() {
+    if (!undoS) return;
+    S = JSON.parse(undoS); fix(); undoS = null;
+    try { localStorage.removeItem(UKEY); } catch (e) {}
+    save(); show("home");
+}
+
+/* ===== 2. HELPERS ===== */
+function money(n) { return "₦" + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function uid() { return Date.now() * 1000 + Math.floor(Math.random() * 1000); }
+function nowLocal() { var n = new Date(); n.setMinutes(n.getMinutes() - n.getTimezoneOffset()); return n.toISOString().slice(0, 16); }
+function today() { return nowLocal().slice(0, 10); }
+function fmtDate(s) { return s ? new Date(s).toLocaleString([], { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : ""; }
+function find(id) { return S.debtors.filter(function (d) { return d.id == id; })[0]; }
+function bal(d) { return d.entries.reduce(function (t, e) { return t + (e.type == "pay" ? -e.amount : e.amount); }, 0); }
+function active() { return S.debtors.filter(function (d) { return !d.cleared; }); }
+function debts(d) { return d.entries.filter(function (e) { return e.type == "debt"; }); }
+function oldest(d) { var x = debts(d).map(function (e) { return e.date; }).sort()[0]; return x ? new Date(x).getTime() : Date.now(); }
+function ageDays(d) { return Math.floor((Date.now() - oldest(d)) / 86400000); }
+function overdue(d) { return debts(d).some(function (e) { return e.due && e.due < today(); }); }
+// Nigerian numbers: 0803... becomes 234803...
+function waNum(p) { var n = String(p || "").replace(/\D/g, ""); return n.indexOf("0") == 0 ? "234" + n.slice(1) : n; }
+function wa(d, msg) { window.open("https://wa.me/" + waNum(d.phone) + "?text=" + encodeURIComponent(msg)); }
+
+// A popup form (works everywhere, unlike the browser's built-in prompt box)
+function askForm(title, fields, onOk) {
+    var ov = document.createElement("div");
+    ov.className = "ov";
+    var h = '<div class="box"><h3>' + esc(title) + '</h3>';
+    fields.forEach(function (f, i) {
+        h += '<label class="fl">' + esc(f.label) + '</label><input class="f" id="af' + i + '" type="' + (f.type || "text") + '"' +
+            (f.type == "number" ? ' inputmode="decimal"' : '') + ' value="' + esc(f.value == null ? "" : f.value) + '" style="margin-bottom:12px">';
+    });
+    h += '<div class="two"><button class="sm" id="afc">Cancel</button><button class="ok" id="afo" style="margin:0;flex:1;width:auto">Save</button></div></div>';
+    ov.innerHTML = h;
+    document.body.appendChild(ov);
+    document.getElementById("afc").onclick = function () { ov.remove(); };
+    document.getElementById("afo").onclick = function () {
+        var vals = fields.map(function (f, i) { return document.getElementById("af" + i).value; });
+        if (onOk(vals) !== false) ov.remove();
+    };
+}
+
+var views = { home: vHome, add: vAdd, book: vBook, ledger: vLedger, cleared: vCleared, plans: vPlans, lock: vLock };
+function show(id, arg) {
+    document.getElementById("app").innerHTML = views[id](arg);
+    window.scrollTo(0, 0);
+    if (id == "add") calcTotal();
+}
+
+/* ===== 3. HOME ===== */
+function vHome() {
+    var act = active(), tot = act.reduce(function (t, d) { return t + bal(d); }, 0), t = today(), given = 0, got = 0;
+    S.debtors.forEach(function (d) { d.entries.forEach(function (e) {
+        if (e.date.slice(0, 10) == t) { if (e.type == "pay") got += e.amount; else given += e.amount; }
+    }); });
+    return '<div class="store"><label>STORE NAME</label>' +
+        '<input value="' + esc(S.store) + '" placeholder="Enter store name..." oninput="S.store=this.value;save()">' +
+        '<div class="td">Total Debt Owed<b>' + money(tot) + '</b><small>' + act.length + ' customer' + (act.length == 1 ? '' : 's') + ' still owe you</small></div></div>' +
+        '<div class="sum"><div><small>Debt given today</small><span class="pl">' + money(given) + '</span></div><div><small>Collected today</small><span class="mn">' + money(got) + '</span></div></div>' +
+        '<div class="grid"><div class="mb" onclick="openAdd()"><span>➕</span>Add Page</div>' +
+        '<div class="mb" onclick="show(\'book\')"><span>📖</span>Debt Book</div>' +
+        '<div class="mb" onclick="show(\'cleared\')"><span>✅</span>Cleared</div>' +
+        '<div class="mb" onclick="show(\'plans\')"><span>📋</span>Plans</div></div>' +
+        '<div class="card"><label class="fl">Tools</label><div class="tools">' +
+        (undoS ? '<button class="sm" onclick="undo()">↶ Undo last change</button>' : '') +
+        '<button class="sm" onclick="backup()">⬇ Backup</button>' +
+        '<button class="sm" onclick="document.getElementById(\'rf\').click()">⬆ Restore</button>' +
+        '<button class="sm" onclick="setPin()">🔒 ' + (S.pin ? 'Change/remove PIN' : 'Set PIN') + '</button></div>' +
+        '<input type="file" id="rf" accept=".json" style="display:none" onchange="restore(this)"></div>';
+}
+async function backup() {
+    var name = "debt-backup-" + today() + ".json", text = JSON.stringify(S), dl = null;
+    try { dl = window.claude ? await claude.use("downloads") : null; } catch (e) {}
+    if (dl) {   // published page: ask the viewer to save the file
+        try { await dl.save({ filename: name, data: text }); } catch (e) {}
+        return;
+    }
+    var b = new Blob([text], { type: "application/json" });   // normal file: plain download
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(b); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+}
+function restore(inp) {
+    var f = inp.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+        try {
+            var x = JSON.parse(r.result); if (!x.debtors) throw 0;
+            if (confirm("Replace ALL current records with this backup?")) { snap(); S = x; fix(); save(); show("home"); }
+        } catch (e) { alert("That file is not a valid backup"); }
+    };
+    r.readAsText(f);
+}
+function setPin() {
+    askForm("PIN lock", [{ label: "New PIN (4+ digits). Leave empty to remove it.", value: "", type: "password" }], function (v) {
+        S.pin = v[0].trim(); save(); show("home");
+    });
+}
+function vLock() {
+    return '<div class="card" style="margin-top:60px"><h3>🔒 Enter PIN</h3>' +
+        '<input id="pinin" class="f" type="password" inputmode="numeric" placeholder="PIN">' +
+        '<button class="ok blue" style="margin:14px 0 0" onclick="unlock()">Unlock</button></div>';
+}
+function unlock() {
+    if (document.getElementById("pinin").value == S.pin) start(); else alert("Wrong PIN");
+}
+
+/* ===== 4. ADD PAGE ===== */
+function newDraft(name) {
+    var r = function () { return { qty: 1, item: "", amount: "" }; };
+    return { name: name || "", dt: nowLocal(), due: "", rows: [r(), r(), r()] };
+}
+function draftEmpty() { return !draft || (!draft.name && draft.rows.every(function (r) { return !r.item && !r.amount; })); }
+function openAdd(name) {
+    if (draftEmpty()) draft = newDraft(name); else if (name) draft.name = name;
+    put(DKEY, draft); show("add");
+}
+function vAdd() {
+    var d = draft;
+    var names = S.debtors.map(function (x) { return '<option value="' + esc(x.name) + '">'; }).join("");
+    var prods = S.products.map(function (x) { return '<option value="' + esc(x.name) + '">'; }).join("");
+    var rows = d.rows.map(function (r, i) {
+        return '<div class="ir">' +
+            '<input class="f" type="number" inputmode="decimal" value="' + esc(r.qty) + '" oninput="ur(' + i + ',\'qty\',this.value)">' +
+            '<input class="f" list="prods" placeholder="Item name" value="' + esc(r.item) + '" oninput="ur(' + i + ',\'item\',this.value)">' +
+            '<input class="f" id="a' + i + '" type="number" inputmode="decimal" placeholder="0" value="' + esc(r.amount) + '" oninput="ur(' + i + ',\'amount\',this.value)"></div>';
+    }).join("");
+    return '<button class="back" onclick="show(\'home\')">← Back</button><h3>New Transaction</h3>' +
+        '<div class="card"><label class="fl">Customer name</label>' +
+        '<input class="f" list="names" placeholder="Debtor\'s name" value="' + esc(d.name) + '" oninput="draft.name=this.value;put(DKEY,draft)">' +
+        '<datalist id="names">' + names + '</datalist><datalist id="prods">' + prods + '</datalist>' +
+        '<label class="fl">Date &amp; time (change it for past sales)</label>' +
+        '<input class="f" type="datetime-local" value="' + d.dt + '" oninput="draft.dt=this.value;put(DKEY,draft)">' +
+        '<label class="fl">Promised to pay by (optional)</label>' +
+        '<input class="f" type="date" value="' + d.due + '" oninput="draft.due=this.value;put(DKEY,draft)"></div>' +
+        '<div class="card"><div class="ih"><span>QTY</span><span>Item</span><span>Amount (₦)</span></div>' + rows +
+        '<div class="pm"><button class="sm" onclick="addRow()">＋ Row</button><button class="sm" onclick="delRow()">－ Row</button></div></div>' +
+        '<div class="tb"><span>Total</span><span id="gt">₦0.00</span></div>' +
+        '<button class="ok" onclick="saveTx()">✓ Save to Debt Book</button>';
+}
+function ur(i, key, val) {
+    var r = draft.rows[i]; r[key] = val;
+    if (key == "item" && !r.amount) {   // saved product? fill the price automatically
+        var p = S.products.filter(function (x) { return x.name.toLowerCase() == val.trim().toLowerCase(); })[0];
+        if (p) { r.unit = p.price; r.amount = String(p.price * (parseFloat(r.qty) || 1)); document.getElementById("a" + i).value = r.amount; }
+    }
+    if (key == "qty" && r.unit) { r.amount = String(r.unit * (parseFloat(val) || 1)); document.getElementById("a" + i).value = r.amount; }
+    if (key == "amount") delete r.unit;
+    put(DKEY, draft); calcTotal();
+}
+function addRow() { draft.rows.push({ qty: 1, item: "", amount: "" }); put(DKEY, draft); show("add"); }
+function delRow() { if (draft.rows.length > 1) { draft.rows.pop(); put(DKEY, draft); show("add"); } }
+function calcTotal() {
+    var t = draft.rows.reduce(function (s, r) { return s + (parseFloat(r.amount) || 0); }, 0);
+    document.getElementById("gt").textContent = money(t);
+}
+function saveTx() {
+    var name = draft.name.trim();
+    var rows = draft.rows.filter(function (r) { return parseFloat(r.amount) > 0; });
+    if (!name) { alert("Please enter the customer's name"); return; }
+    if (!rows.length) { alert("Please enter at least one amount"); return; }
+    snap();
+    var d = S.debtors.filter(function (x) { return x.name.toLowerCase() == name.toLowerCase(); })[0];
+    if (!d) { d = { id: uid(), name: name, phone: "", cleared: false, entries: [] }; S.debtors.push(d); }
+    d.cleared = false;
+    rows.forEach(function (r) {
+        d.entries.push({ type: "debt", date: draft.dt, due: draft.due, qty: parseFloat(r.qty) || 1, item: r.item.trim(), amount: parseFloat(r.amount) });
+    });
+    save(); draft = null;
+    try { localStorage.removeItem(DKEY); } catch (e) {}
+    show("book");
+}
+
+/* ===== 5. DEBT BOOK (search + sort) ===== */
+function vBook() {
+    var tot = active().reduce(function (t, d) { return t + bal(d); }, 0);
+    return '<button class="back" onclick="show(\'home\')">← Back</button><h3>Debt Book</h3>' +
+        '<div class="tb"><span>Total</span><span>' + money(tot) + '</span></div>' +
+        '<div class="two" style="margin-bottom:14px"><input id="q" class="f" type="search" placeholder="🔍 Search name..." oninput="refreshBook()">' +
+        '<select class="f" style="width:130px" onchange="sortBy=this.value;refreshBook()">' +
+        '<option value="big"' + (sortBy == "big" ? " selected" : "") + '>Biggest</option>' +
+        '<option value="old"' + (sortBy == "old" ? " selected" : "") + '>Oldest</option>' +
+        '<option value="name"' + (sortBy == "name" ? " selected" : "") + '>A–Z</option></select></div>' +
+        '<div class="card" id="bl">' + bookRows("") + '</div>';
+}
+function refreshBook() { document.getElementById("bl").innerHTML = bookRows(document.getElementById("q").value); }
+function bookRows(q) {
+    q = q.trim().toLowerCase();
+    var act = active().filter(function (d) { return d.name.toLowerCase().indexOf(q) > -1; });
+    act.sort(function (a, b) {
+        if (sortBy == "old") return oldest(a) - oldest(b);
+        if (sortBy == "name") return a.name.localeCompare(b.name);
+        return bal(b) - bal(a);
+    });
+    var list = act.map(function (d, i) {
+        var age = ageDays(d), od = overdue(d);
+        return '<div class="li"><span class="n">' + (i + 1) + '</span>' +
+            '<span class="nm" onclick="show(\'ledger\',' + d.id + ')">' + esc(d.name) +
+            '<small class="' + (age > 7 || od ? "over" : "") + '">' + age + ' day' + (age == 1 ? '' : 's') + (od ? ' · Overdue' : '') + '</small></span>' +
+            '<span class="am">' + money(bal(d)) + '</span>' +
+            '<button class="ck" onclick="clearIt(' + d.id + ')">✓</button></div>';
+    }).join("");
+    return list || '<div class="empty">' + (q ? "No match" : "No active debts") + '</div>';
+}
+function clearIt(id) {
+    var d = find(id);
+    if (confirm("Mark " + d.name + " as fully paid and move to Cleared?")) { snap(); d.cleared = true; save(); show("book"); }
+}
+
+/* ===== 6. LEDGER (one customer) ===== */
+function vLedger(id) {
+    var d = find(id), b = bal(d);
+    var rows = d.entries.map(function (e, i) {
+        var p = e.type == "pay";
+        var t = p ? "Payment" : esc(e.item || "Item") + (e.qty > 1 ? " ×" + e.qty : "");
+        return '<div class="le"><div><b>' + t + '</b><small>' + fmtDate(e.date) + (e.due ? ' · due ' + e.due : '') + '</small></div>' +
+            '<span class="' + (p ? "mn" : "pl") + '">' + (p ? "−" : "+") + money(e.amount) + '</span>' +
+            '<button class="ib" onclick="editEntry(' + id + ',' + i + ')">✎</button>' +
+            '<button class="ib" onclick="delEntry(' + id + ',' + i + ')">✕</button></div>';
+    }).join("");
+    return '<button class="back" onclick="show(\'book\')">← Back</button><h3>' + esc(d.name) + '</h3>' +
+        '<div class="tb"><span>Balance owed</span><span>' + money(b) + '</span></div>' +
+        '<div class="card"><label class="fl">Phone number (for WhatsApp)</label>' +
+        '<input class="f" type="tel" placeholder="e.g. 0803 123 4567" value="' + esc(d.phone || "") + '" oninput="find(' + id + ').phone=this.value;save()">' +
+        '<div class="pm"><button class="sm wa" onclick="remind(' + id + ')">💬 Remind</button><button class="sm wa" onclick="statement(' + id + ')">📄 Statement</button></div></div>' +
+        '<div class="card">' + (rows || '<div class="empty">No entries</div>') + '</div>' +
+        '<button class="ok blue" onclick="openAddFor(' + id + ')">＋ Add purchase</button>' +
+        '<div class="card"><label class="fl">Record a payment (minus)</label><div class="two">' +
+        '<input id="pay" class="f" type="number" inputmode="decimal" placeholder="Amount paid">' +
+        '<button class="sm red" onclick="pay(' + id + ')">－ Pay</button></div></div>';
+}
+function openAddFor(id) { openAdd(find(id).name); }
+function remind(id) {
+    var d = find(id);
+    wa(d, "Hello " + d.name + ", this is a reminder from " + S.store + ". You owe " + money(bal(d)) + ". Please pay when you can. Thank you.");
+}
+function statement(id) {
+    var d = find(id);
+    var lines = d.entries.map(function (e) {
+        var day = e.date.slice(0, 10);
+        return e.type == "pay" ? day + "  Payment  -" + money(e.amount)
+            : day + "  " + (e.item || "Item") + (e.qty > 1 ? " x" + e.qty : "") + "  " + money(e.amount);
+    });
+    wa(d, S.store + " - Statement for " + d.name + "\n\n" + lines.join("\n") + "\n\nBalance owed: " + money(bal(d)));
+}
+function recheck(d) { d.cleared = bal(d) <= 0; save(); show("ledger", d.id); }
+function editEntry(id, i) {
+    var d = find(id), e = d.entries[i], isDebt = e.type == "debt";
+    var fields = isDebt ? [{ label: "Item name", value: e.item }, { label: "Amount (₦)", value: e.amount, type: "number" }]
+                        : [{ label: "Amount (₦)", value: e.amount, type: "number" }];
+    askForm(isDebt ? "Edit purchase" : "Edit payment", fields, function (v) {
+        var a = parseFloat(v[isDebt ? 1 : 0]);
+        if (!(a > 0)) { alert("Enter a valid amount"); return false; }
+        snap(); e.amount = a; if (isDebt) e.item = v[0].trim();
+        recheck(d);
+    });
+}
+function delEntry(id, i) {
+    var d = find(id);
+    if (!confirm("Delete this entry?")) return;
+    snap(); d.entries.splice(i, 1); recheck(d);
+}
+function pay(id) {
+    var d = find(id), v = parseFloat(document.getElementById("pay").value);
+    if (!(v > 0)) { alert("Enter the amount paid"); return; }
+    snap(); d.entries.push({ type: "pay", date: nowLocal(), amount: v });
+    if (bal(d) <= 0) { d.cleared = true; save(); alert(d.name + " has fully paid. Moved to Cleared."); show("cleared"); }
+    else { save(); show("ledger", id); }
+}
+
+/* ===== 7. CLEARED ===== */
+function vCleared() {
+    return '<button class="back" onclick="show(\'home\')">← Back</button><h3>Cleared</h3>' +
+        '<input id="cq" class="f" type="search" placeholder="🔍 Search name..." style="margin-bottom:14px" oninput="document.getElementById(\'cl\').innerHTML=clearedRows(this.value)">' +
+        '<div class="card" id="cl">' + clearedRows("") + '</div>';
+}
+function clearedRows(q) {
+    q = q.trim().toLowerCase();
+    var done = S.debtors.filter(function (d) { return d.cleared && d.name.toLowerCase().indexOf(q) > -1; });
+    var list = done.map(function (d, i) {
+        var paid = debts(d).reduce(function (t, e) { return t + e.amount; }, 0);
+        return '<div class="li"><span class="n">' + (i + 1) + '</span><span class="nm">' + esc(d.name) + '</span>' +
+            '<span class="mn">' + money(paid) + '</span>' +
+            '<button class="sm" style="flex:0 0 auto;padding:8px 10px" onclick="addBack(' + d.id + ')">Add back</button></div>';
+    }).join("");
+    return list || '<div class="empty">' + (q ? "No match" : "Nobody cleared yet") + '</div>';
+}
+function addBack(id) { snap(); find(id).cleared = false; save(); show("ledger", id); }
+
+/* ===== 8. PLANS + PRODUCTS ===== */
+function vPlans() {
+    var t = today();
+    var items = S.plans.items.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    var list = items.map(function (p) {
+        return '<div class="le"><div><b>' + esc(p.text) + '</b><small class="' + (p.date && p.date < t ? "over" : "") + '">' + (p.date || "No date") + '</small></div>' +
+            '<button class="sm red" onclick="delPlan(' + p.id + ')">✕</button></div>';
+    }).join("");
+    var prods = S.products.map(function (p, i) {
+        return '<div class="le"><div><b>' + esc(p.name) + '</b></div><span>' + money(p.price) + '</span>' +
+            '<button class="sm" style="flex:0 0 auto;padding:8px 12px" onclick="editProd(' + i + ')">✏️ Edit</button>' +
+            '<button class="sm red" onclick="delProd(' + i + ')">✕</button></div>';
+    }).join("");
+    return '<button class="back" onclick="show(\'home\')">← Back</button><h3>Plans</h3>' +
+        '<div class="card"><label class="fl">Business goals &amp; notes</label>' +
+        '<textarea class="f" rows="4" oninput="S.plans.goals=this.value;save()">' + esc(S.plans.goals) + '</textarea></div>' +
+        '<div class="card"><label class="fl">Payment promises</label>' +
+        '<input id="pt" class="f" placeholder="Who promised to pay what?">' +
+        '<input id="pdt" class="f" type="date" style="margin-top:8px">' +
+        '<button class="sm" style="width:100%;margin-top:8px" onclick="addPlan()">＋ Add</button>' +
+        (list ? '<div style="margin-top:10px">' + list + '</div>' : '') + '</div>' +
+        '<div class="card"><label class="fl">My products (price fills in automatically)</label>' +
+        '<div class="two"><input id="pn" class="f" placeholder="Item e.g. Ice water"><input id="pp" class="f" type="number" inputmode="decimal" placeholder="Price" style="width:110px"></div>' +
+        '<button class="sm" style="width:100%;margin-top:8px" onclick="addProd()">＋ Save product</button>' +
+        (prods ? '<div style="margin-top:10px">' + prods + '</div>' : '') + '</div>';
+}
+function addPlan() {
+    var t = document.getElementById("pt").value.trim();
+    if (!t) { alert("Write the promise first"); return; }
+    S.plans.items.push({ id: uid(), text: t, date: document.getElementById("pdt").value });
+    save(); show("plans");
+}
+function delPlan(id) { S.plans.items = S.plans.items.filter(function (p) { return p.id != id; }); save(); show("plans"); }
+function addProd() {
+    var n = document.getElementById("pn").value.trim(), p = parseFloat(document.getElementById("pp").value);
+    if (!n || !(p > 0)) { alert("Enter the item name and its price"); return; }
+    S.products.push({ name: n, price: p }); save(); show("plans");
+}
+function delProd(i) { S.products.splice(i, 1); save(); show("plans"); }
+// Change a product's name or price without deleting it
+function editProd(i) {
+    var p = S.products[i];
+    askForm("Edit product", [{ label: "Item name", value: p.name }, { label: "Price (₦)", value: p.price, type: "number" }], function (v) {
+        var pr = parseFloat(v[1]);
+        if (!v[0].trim() || !(pr > 0)) { alert("Enter the item name and a valid price"); return false; }
+        p.name = v[0].trim(); p.price = pr; save(); show("plans");
+    });
+}
+
+/* ===== 9. START ===== */
+function start() {
+    show("home");
+    if (!draftEmpty()) {
+        setTimeout(function () {
+            if (confirm("You have an unsaved draft. Restore it?")) show("add");
+            else { draft = null; try { localStorage.removeItem(DKEY); } catch (e) {} }
+        }, 300);
+    }
+}
+if (S.pin) show("lock"); else start();
+</script>
+</body>
+</html>
